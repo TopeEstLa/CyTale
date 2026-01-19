@@ -102,7 +102,6 @@ public class Player {
      */
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
         if (!(obj instanceof Player target)) return false;
 
         return target.getName().equalsIgnoreCase(this.name);
