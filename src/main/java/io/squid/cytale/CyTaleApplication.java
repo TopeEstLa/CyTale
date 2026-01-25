@@ -17,6 +17,11 @@ public class CyTaleApplication {
 
 
     public void start(String[] args) {
+        if (args.length == 0) {
+            System.err.println("Please provide a level file path as an argument.");
+            return;
+        }
+
         String path = args[0];
         Path filePath = Path.of(path);
         try {
@@ -29,7 +34,13 @@ public class CyTaleApplication {
             return;
         }
 
-        File file = filePath.toFile();
+        Level level;
+        try {
+            level = new Level(filePath);
+        } catch (Exception e) {
+            System.err.println("Error loading level: " + e.getMessage());
+            return;
+        }
 
         char[][] layout = {
                 {'#', ' ', '#', '#', '#', '#', '#', '#', '#', '#'},
@@ -45,7 +56,7 @@ public class CyTaleApplication {
         };
 
         boolean run = true;
-        Level level = new Level(layout, 10, 10, 1, 1);
+        //Level level = new Level(layout, 10, 10, 1, 1);
         Scanner scanner = new Scanner(System.in);
         level.showLayout();
         while (run) {
@@ -70,7 +81,7 @@ public class CyTaleApplication {
                 default:
                     System.out.println("Invalid input");
             }
-            //wait for zqsd entry
+
             level.showLayout();
         }
     }
