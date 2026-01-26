@@ -18,3 +18,13 @@ dependencies {
 test {
     useJUnitPlatform()
 }
+
+jar {
+    manifest {
+        attributes(
+                "Main-Class": "io.squid.cytale.CyTaleBootstrap",
+                "Implementation-Version": version,
+                "Implementation-Title": project.name
+        )
+    }
+}

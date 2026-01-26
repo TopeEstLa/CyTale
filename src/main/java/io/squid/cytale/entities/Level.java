@@ -1,5 +1,6 @@
 package io.squid.cytale.entities;
 
+import io.squid.cytale.enums.CellType;
 import io.squid.cytale.enums.Direction;
 
 import java.nio.file.Files;
@@ -17,21 +18,22 @@ import java.util.List;
  */
 public class Level {
 
-    private char[][] layout;
+    private LevelCell[][] layout;
     private int length;
     private int width;
 
-    private int playerX;
-    private int playerY;
+    private Player player;
+    private Location defaultPlayerLocation;
 
     /**
      * Parsing a level from a file
      * literally reading the file line by line and char by char
      * and storing it in a 2D char array
      * Player position is marked by '1' in the file
+     *
      * @param file Path to the level file
      */
-    public Level(Path file) {
+    public Level(Path file, Player player) {
         List<String> lines;
         try {
             lines = Files.readAllLines(file);
@@ -42,28 +44,40 @@ public class Level {
         this.length = lines.size();
         this.width = lines.get(0).length();
 
-        this.layout = new char[this.length][this.width];
+        this.layout = new LevelCell[this.length][this.width];
 
         boolean playerFound = false;
 
         for (int i = 0; i < this.length; i++) {
             String line = lines.get(i);
             for (int j = 0; j < this.width; j++) {
-                String charStr = String.valueOf(line.charAt(j));
-                if (charStr.equalsIgnoreCase("1")) {
-                    this.playerX = j;
-                    this.playerY = i;
-                    this.layout[i][j] = ' ';
-                    playerFound = true;
+                char charStr = line.charAt(j);
+                CellType cellType;
+                boolean hasCoin = false;
+                if (charStr == '1') {
+                    this.defaultPlayerLocation = new Location(j, i);
+                    cellType = CellType.FLOOR;
+                } else if (charStr == '.') {
+                    cellType = CellType.FLOOR;
+                    hasCoin = true;
                 } else {
-                    this.layout[i][j] = line.charAt(j);
+                    cellType = CellType.fromSymbol(charStr);
                 }
+
+                this.layout[i][j] = new LevelCell(cellType, new Location(j, i), hasCoin);
             }
         }
 
-        if (!playerFound) {
-            throw new IllegalArgumentException("Player position must be specified in the level file");
+        if (this.defaultPlayerLocation == null) {
+            throw new IllegalArgumentException("Player position not found in level file");
         }
+
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+
+        this.player = player;
+        this.player.setLocation(this.defaultPlayerLocation.copy());
     }
 
     /**
@@ -74,7 +88,7 @@ public class Level {
      * @param length length of the layout
      * @param width  width of the layout
      */
-    public Level(char[][] layout, int length, int width) {
+    public Level(LevelCell[][] layout, int length, int width, Player player) {
         throw new IllegalArgumentException("Player position must be specified");
     }
 
@@ -88,13 +102,10 @@ public class Level {
      * @param playerX player X position
      * @param playerY player Y position
      */
-    public Level(char[][] layout, int length, int width, int playerX, int playerY) {
+    public Level(LevelCell[][] layout, int length, int width, int playerX, int playerY, Player player) {
         this.layout = layout;
         this.length = length;
         this.width = width;
-
-        this.playerX = playerX;
-        this.playerY = playerY;
 
         if (playerX < 0 || playerY < 0) {
             throw new IllegalArgumentException("Player position must be non-negative");
@@ -104,9 +115,18 @@ public class Level {
             throw new IllegalArgumentException("Player position is out of bounds");
         }
 
-        if (layout[playerY][playerX] != ' ') {
-            throw new IllegalArgumentException("Player position must be on a blank space");
+        this.defaultPlayerLocation = new Location(playerX, playerY);
+
+        if (!layout[playerY][playerX].getType().isWalkable()) {
+            throw new IllegalArgumentException("Player position must be walkable");
         }
+
+        if (player == null) {
+            throw new IllegalArgumentException("Player cannot be null");
+        }
+
+        this.player = player;
+        this.player.setLocation(this.defaultPlayerLocation.copy());
     }
 
     /**
@@ -115,31 +135,45 @@ public class Level {
      * @param direction Direction to move the player
      */
     public void moovePlayer(Direction direction) {
+        int dx = 0;
+        int dy = 0;
+
         switch (direction) {
             case TOP:
-                if (playerY > 0 && layout[playerY - 1][playerX] == ' ') {
-                    playerY--;
-                }
+                dy = -1;
                 break;
             case BOT:
-                if (playerY < length - 1 && layout[playerY + 1][playerX] == ' ') {
-                    playerY++;
-                }
-                break;
-            case RIGHT:
-                if (playerX < width - 1 && layout[playerY][playerX + 1] == ' ') {
-                    playerX++;
-                }
+                dy = 1;
                 break;
             case LEFT:
-                if (playerX > 0 && layout[playerY][playerX - 1] == ' ') {
-                    playerX--;
-                }
+                dx = -1;
+                break;
+            case RIGHT:
+                dx = 1;
                 break;
             default:
                 throw new IllegalArgumentException("Invalid direction");
         }
-        this.showLayout();
+
+        int nextX = (this.player.getLocation().getX() + dx % this.width + this.width) % this.width; //dark calculus who some how work
+        int nextY = (this.player.getLocation().getY() + dy % this.length + this.length) % this.length;
+
+        LevelCell targetCell = this.layout[nextY][nextX];
+        if (!targetCell.getType().isWalkable()) {
+            return;
+        }
+
+        player.setLocation(new Location(nextX, nextY));
+
+        if (targetCell.hasCoin()) {
+            player.addScore(10);
+            targetCell.setCoin(false);
+        }
+
+        if (targetCell.getType().equals(CellType.TRAP)) {
+            player.removeHealth(1);
+            player.setLocation(this.defaultPlayerLocation.copy());
+        }
     }
 
     /**
@@ -148,13 +182,24 @@ public class Level {
     public void showLayout() {
         for (int i = 0; i < this.length; i++) {
             for (int j = 0; j < this.width; j++) {
-                if (i == playerY && j == playerX) {
+                if (i == this.player.getLocation().getY() && j == this.player.getLocation().getX()) {
                     System.out.print("1 ");
                 } else {
-                    System.out.print(this.layout[i][j] + " ");
+                    System.out.print(this.layout[i][j].getSymbol() + " ");
                 }
             }
             System.out.println();
         }
+    }
+
+    public boolean isCompleted() {
+        for (int i = 0; i < this.length; i++) {
+            for (int j = 0; j < this.width; j++) {
+                if (this.layout[i][j].hasCoin()) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

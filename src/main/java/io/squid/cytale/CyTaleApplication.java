@@ -5,7 +5,6 @@ import io.squid.cytale.entities.Level;
 import io.squid.cytale.entities.Player;
 import io.squid.cytale.enums.Direction;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Scanner;
@@ -17,73 +16,87 @@ public class CyTaleApplication {
 
 
     public void start(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.printf("Entrer votre pseudo : ");
+        String playerName = scanner.nextLine();
+        Player player = new Player(playerName);
+
         if (args.length == 0) {
-            System.err.println("Please provide a level file path as an argument.");
+            System.out.println("Please provide a level file path as an argument.");
             return;
         }
-
-        String path = args[0];
-        Path filePath = Path.of(path);
-        try {
-            if (!Files.exists(filePath)) {
-                System.err.println("File not found: " + path);
-                return;
-            }
-        } catch (Exception e) {
-            System.err.println("Error checking file: " + e.getMessage());
-            return;
-        }
-
-        Level level;
-        try {
-            level = new Level(filePath);
-        } catch (Exception e) {
-            System.err.println("Error loading level: " + e.getMessage());
-            return;
-        }
-
-        char[][] layout = {
-                {'#', ' ', '#', '#', '#', '#', '#', '#', '#', '#'},
-                {' ', ' ', ' ', ' ', '#', ' ', ' ', ' ', ' ', '#'},
-                {'#', ' ', '#', ' ', '#', ' ', '#', '#', ' ', '#'},
-                {'#', ' ', '#', ' ', ' ', ' ', ' ', '#', ' ', '#'},
-                {'#', ' ', '#', '#', '#', '#', ' ', '#', ' ', '#'},
-                {'#', ' ', ' ', ' ', ' ', '#', ' ', '#', ' ', '#'},
-                {'#', '#', '#', '#', ' ', '#', ' ', '#', ' ', '#'},
-                {'#', ' ', ' ', '#', ' ', ' ', ' ', ' ', ' ', ' '},
-                {'#', ' ', '#', '#', '#', '#', '#', '#', ' ', '#'},
-                {'#', '#', '#', '#', '#', '#', '#', '#', ' ', '#'},
-        };
 
         boolean run = true;
-        //Level level = new Level(layout, 10, 10, 1, 1);
-        Scanner scanner = new Scanner(System.in);
-        level.showLayout();
+
+        globalLoop:
         while (run) {
+            player.setHealth(5);
+            player.setScore(0);
 
-            String input = scanner.nextLine();
-            switch (input) {
-                case "z":
-                    level.moovePlayer(Direction.TOP);
-                    break;
-                case "q":
-                    level.moovePlayer(Direction.LEFT);
-                    break;
-                case "s":
-                    level.moovePlayer(Direction.BOT);
-                    break;
-                case "d":
-                    level.moovePlayer(Direction.RIGHT);
-                    break;
-                case "exit":
-                    run = false;
-                    break;
-                default:
-                    System.out.println("Invalid input");
+            for (int i = 0; i < args.length; i++) { //preload level ig (?) if player die we literally recompute lmao
+                String arg = args[i];
+                Path path = Path.of(arg);
+                if (!Files.exists(path) || Files.isDirectory(path)) {
+                    System.out.printf("The file %s does not exist or is a directory.%n", arg);
+                    return;
+                }
+
+                Level level = new Level(path, player);
+                this.printBoard(level, player);
+                boolean levelRunning = true;
+                while (levelRunning) {
+
+                    String input = scanner.nextLine();
+                    switch (input) {
+                        case "z":
+                            level.moovePlayer(Direction.TOP);
+                            break;
+                        case "q":
+                            level.moovePlayer(Direction.LEFT);
+                            break;
+                        case "s":
+                            level.moovePlayer(Direction.BOT);
+                            break;
+                        case "d":
+                            level.moovePlayer(Direction.RIGHT);
+                            break;
+                        case "exit":
+                            break globalLoop;
+                        default:
+                            System.out.println("Invalid input");
+                    }
+
+                    this.printBoard(level, player);
+
+                    if (level.isCompleted()) {
+                        System.out.println("Level completed!");
+                        levelRunning = false;
+                    }
+
+                    if (player.isDead()) {
+                        System.out.println("You are dead! Game over.");
+                        System.out.println("Final score: " + player.getScore());
+                        System.out.println("Retry ? (y/n): ");
+                        String retryInput = scanner.nextLine();
+                        if (retryInput.equalsIgnoreCase("y")) {
+                            i = 0;
+                            player.setScore(0);
+                            player.setHealth(5);
+                            continue globalLoop;
+                        } else {
+                            break globalLoop;
+                        }
+                    }
+                }
             }
-
-            level.showLayout();
+            run = false;
         }
+
+        System.out.printf("Merci d'avoir joué %s!%n", player.getName());
     }
 
+    public void printBoard(Level level, Player player) {
+        level.showLayout();
+        System.out.printf("Score: %d | Health: %d%n", player.getScore(), player.getHealth());
+    }
 }

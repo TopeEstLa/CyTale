@@ -11,6 +11,9 @@ public class Player {
 
     private final String name;
     private int score;
+    private int health;
+
+    private Location location;
 
     /**
      * Default constructor for Player
@@ -36,8 +39,20 @@ public class Player {
      * @param score Initial score of the player
      */
     public Player(String name, int score) {
+        this(name, score, 5);
+    }
+
+    /**
+     * Constructor for Player
+     * @param name Name of the player
+     * @param score Initial score of the player
+     * @param health Initial health of the player
+     */
+    public Player(String name, int score, int health) {
         this.name = name;
         this.score = score;
+        this.health = health;
+        this.location = new Location(0, 0);
         playerCounter++;
     }
 
@@ -72,6 +87,34 @@ public class Player {
     }
 
     /**
+     * Removes health from the player
+     * 0 if health would go below 0
+     * @param damage Amount of health to remove
+     */
+    public void removeHealth(int damage) {
+        this.health -= damage;
+        if (this.health < 0) {
+            this.health = 0;
+        }
+    }
+
+    /**
+     * Sets the player's health to a specific value
+     * @param health New health value
+     */
+    public void setHealth(int health) {
+        this.health = health;
+    }
+
+    /**
+     * Sets the player's location
+     * @param location New location of the player
+     */
+    public void setLocation(Location location) {
+        this.location = location;
+    }
+
+    /**
      * Gets the name of the player
      * @return Name of the player
      */
@@ -85,6 +128,30 @@ public class Player {
      */
     public int getScore() {
         return score;
+    }
+
+    /**
+     * Gets the health of the player
+     * @return Health of the player
+     */
+    public int getHealth() {
+        return health;
+    }
+
+    /**
+     * Checks if the player is dead (health <= 0)
+     * @return true if the player is dead, false otherwise
+     */
+    public boolean isDead() {
+        return this.health <= 0;
+    }
+
+    /**
+     * Gets the location of the player
+     * @return Location of the player
+     */
+    public Location getLocation() {
+        return location;
     }
 
     /**
