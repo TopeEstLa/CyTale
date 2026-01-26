@@ -18,11 +18,11 @@ import java.util.List;
  */
 public class Level {
 
-    private LevelCell[][] layout;
-    private int length;
-    private int width;
+    private final LevelCell[][] layout;
+    private final int length;
+    private final int width;
 
-    private Player player;
+    private final Player player;
     private Location defaultPlayerLocation;
 
     /**
@@ -45,8 +45,6 @@ public class Level {
         this.width = lines.get(0).length();
 
         this.layout = new LevelCell[this.length][this.width];
-
-        boolean playerFound = false;
 
         for (int i = 0; i < this.length; i++) {
             String line = lines.get(i);
@@ -155,6 +153,7 @@ public class Level {
                 throw new IllegalArgumentException("Invalid direction");
         }
 
+        // nextX = (((x + dx) mod(width)) + width) mod(width)
         int nextX = (this.player.getLocation().getX() + dx % this.width + this.width) % this.width; //dark calculus who some how work
         int nextY = (this.player.getLocation().getY() + dy % this.length + this.length) % this.length;
 

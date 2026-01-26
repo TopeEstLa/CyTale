@@ -1,8 +1,7 @@
 package io.squid.cytale.enums;
 
-import io.squid.cytale.entities.Player;
-
 /**
+ * Represents different types of cells in the game level
  * @author TopeEstLa
  */
 public enum CellType {
