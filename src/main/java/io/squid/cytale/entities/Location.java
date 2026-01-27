@@ -1,5 +1,7 @@
 package io.squid.cytale.entities;
 
+import java.util.Objects;
+
 /**
  * Represents a location in 2D space
  * X = right to left
@@ -50,5 +52,24 @@ public class Location {
      */
     public Location copy() {
         return new Location(x, y);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Location target)) return false;
+        return this.x == target.getX() && this.y == target.getY();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
+
+    @Override
+    public String toString() {
+        return "Location{" +
+                "x=" + x +
+                ", y=" + y +
+                '}';
     }
 }

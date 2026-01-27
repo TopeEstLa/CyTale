@@ -5,7 +5,10 @@ import io.squid.cytale.enums.Direction;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents a level in the game
@@ -21,6 +24,9 @@ public class Level {
     private final LevelCell[][] layout;
     private final int length;
     private final int width;
+
+    private final List<Entity> entities;
+    private final Set<Location> entitiesLocation;
 
     private final Player player;
     private Location defaultPlayerLocation;
@@ -46,6 +52,9 @@ public class Level {
 
         this.layout = new LevelCell[this.length][this.width];
 
+        this.entities = new ArrayList<>();
+        this.entitiesLocation = new HashSet<>();
+
         for (int i = 0; i < this.length; i++) {
             String line = lines.get(i);
             for (int j = 0; j < this.width; j++) {
@@ -58,6 +67,12 @@ public class Level {
                 } else if (charStr == '.') {
                     cellType = CellType.FLOOR;
                     hasCoin = true;
+                } else if (charStr == 'R') {
+                    Location location = new Location(j, i);
+                    Monster monster = new Monster(this, 5, location);
+                    this.entities.add(monster);
+                    this.entitiesLocation.add(location.copy());
+                    cellType = CellType.FLOOR;
                 } else {
                     cellType = CellType.fromSymbol(charStr);
                 }
@@ -80,18 +95,6 @@ public class Level {
 
     /**
      * Constructor for Level
-     * Always throw IllegalArgumentException cause player position must be specified
-     *
-     * @param layout 2D char array representing the layout
-     * @param length length of the layout
-     * @param width  width of the layout
-     */
-    public Level(LevelCell[][] layout, int length, int width, Player player) {
-        throw new IllegalArgumentException("Player position must be specified");
-    }
-
-    /**
-     * Constructor for Level
      * Throw IllegalArgumentException if player position is out of bounds or on a wall
      *
      * @param layout  2D char array representing the layout
@@ -104,6 +107,9 @@ public class Level {
         this.layout = layout;
         this.length = length;
         this.width = width;
+
+        this.entities = new ArrayList<>();
+        this.entitiesLocation = new HashSet<>();
 
         if (playerX < 0 || playerY < 0) {
             throw new IllegalArgumentException("Player position must be non-negative");
@@ -158,21 +164,33 @@ public class Level {
         int nextY = (this.player.getLocation().getY() + dy % this.length + this.length) % this.length;
 
         LevelCell targetCell = this.layout[nextY][nextX];
-        if (!targetCell.getType().isWalkable()) {
-            return;
+        Location loca = new Location(nextX, nextY);
+        if (targetCell.getType().isWalkable()) {
+            player.setLocation(loca.copy());
+
+            if (targetCell.hasCoin()) {
+                player.addScore(10);
+                targetCell.setCoin(false);
+            }
+
+            if (targetCell.getType().equals(CellType.TRAP)) {
+                this.playerDamage();
+            }
+
+            if (this.entitiesLocation.contains(loca)) {
+                List<Entity> targetEntities = this.getEntitiesAt(loca);
+                for (Entity entity : targetEntities) {
+                    entity.interact(this.player);
+                }
+            }
         }
 
-        player.setLocation(new Location(nextX, nextY));
+        this.tickLevel();
+    }
 
-        if (targetCell.hasCoin()) {
-            player.addScore(10);
-            targetCell.setCoin(false);
-        }
-
-        if (targetCell.getType().equals(CellType.TRAP)) {
-            player.removeHealth(1);
-            player.setLocation(this.defaultPlayerLocation.copy());
-        }
+    public void playerDamage() {
+        player.removeHealth(1);
+        player.setLocation(this.defaultPlayerLocation.copy());
     }
 
     /**
@@ -184,6 +202,14 @@ public class Level {
                 if (i == this.player.getLocation().getY() && j == this.player.getLocation().getX()) {
                     System.out.print("1 ");
                 } else {
+                    Location loc = new Location(j, i);
+                    if (this.entitiesLocation.contains(loc)) {
+                        List<Entity> locationEntity = this.getEntitiesAt(loc);
+                        if (!locationEntity.isEmpty()) {
+                            System.out.print(locationEntity.get(0).getSymbol() + " ");
+                            continue;
+                        }
+                    }
                     System.out.print(this.layout[i][j].getSymbol() + " ");
                 }
             }
@@ -191,6 +217,19 @@ public class Level {
         }
     }
 
+    public void tickLevel() {
+        this.entitiesLocation.clear();
+        for (Entity entity : this.entities) {
+            entity.tick();
+            this.entitiesLocation.add(entity.getLocation().copy());
+        }
+    }
+
+    /**
+     * Checks if the level is completed (no coins left)
+     *
+     * @return true if completed, false otherwise
+     */
     public boolean isCompleted() {
         for (int i = 0; i < this.length; i++) {
             for (int j = 0; j < this.width; j++) {
@@ -200,5 +239,35 @@ public class Level {
             }
         }
         return true;
+    }
+
+    public List<Entity> getEntitiesAt(Location location) {
+        List<Entity> foundEntities = new ArrayList<>();
+        for (Entity entity : this.entities) {
+            if (entity.getLocation().equals(location)) {
+                foundEntities.add(entity);
+            }
+        }
+        return foundEntities;
+    }
+
+    public LevelCell[][] getLayout() {
+        return layout;
+    }
+
+    public int getLength() {
+        return length;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public Location getDefaultPlayerLocation() {
+        return defaultPlayerLocation;
     }
 }

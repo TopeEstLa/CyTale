@@ -22,7 +22,7 @@ public class CyTaleApplication {
         Player player = new Player(playerName);
 
         if (args.length == 0) {
-            System.out.println("Please provide a level file path as an argument.");
+            System.err.println("Please provide a level file path as an argument.");
             return;
         }
 
@@ -37,7 +37,7 @@ public class CyTaleApplication {
                 String arg = args[i];
                 Path path = Path.of(arg);
                 if (!Files.exists(path) || Files.isDirectory(path)) {
-                    System.out.printf("The file %s does not exist or is a directory.%n", arg);
+                    System.err.printf("The file %s does not exist or is a directory.%n", arg);
                     return;
                 }
 
